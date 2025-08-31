@@ -37,9 +37,11 @@ jobs:
       - name: Clone ChOma
         run: |
           git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
-          # 构建 ChOma 使其生成头文件
+          # 修复测试工具构建问题
+          sed -i '' 's/csd_code_directory_update/csd_code_directory_init/g' $GITHUB_WORKSPACE/ChOma/tests/choma_sign/main.c
+          # 仅构建库，跳过测试
           cd $GITHUB_WORKSPACE/ChOma
-          make
+          make DISABLE_TESTS=1
 
       # 6. 指向最新 Xcode
       - name: Select Xcode
@@ -58,10 +60,6 @@ jobs:
           # 进入项目目录
           cd $GITHUB_WORKSPACE/Trollhelper
           
-          # 确保所有依赖头文件存在
-          echo "ChOma header files:"
-          ls -la $CHOMA_SRC/FAT.h $CHOMA_SRC/MachO.h $CHOMA_SRC/CSBlob.h
-          
           # 复制全部必要文件到 fastPathSign 目录
           mkdir -p Exploits/fastPathSign/src
           cp -v $CHOMA_SRC/*.h Exploits/fastPathSign/src/
@@ -71,9 +69,6 @@ jobs:
           
           # 进入 fastPathSign 目录
           cd Exploits/fastPathSign
-          
-          # 显示复制的文件
-          ls -lA src/
           
           # 构建 fastPathSign
           clang -framework Foundation -framework CoreServices -framework Security \
@@ -87,9 +82,6 @@ jobs:
           
           # 返回项目根目录
           cd $GITHUB_WORKSPACE/Trollhelper
-          
-          # 确保可执行文件存在
-          ls -l Exploits/fastPathSign/fastPathSign
           
           # 构建主项目
           export THEOS=$GITHUB_WORKSPACE/theos
