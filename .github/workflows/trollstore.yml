@@ -10,7 +10,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    # 1. 拉取当前仓库
+      # 1. 拉取当前仓库
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -35,12 +35,11 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 6. 构建（用仓库里的 fastPathSign 绝对路径）
+      # 6. 构建（修正缩进与多行命令）
       - name: Build
         run: |
-        cp Exploits/fastPathSign/fastPathSign Trollhelper/../Exploits/fastPathSign/fastPathSign || \
-        mkdir -p Trollhelper/Exploits/fastPathSign && \
-        cp Exploits/fastPathSign/fastPathSign Trollhelper/Exploits/fastPathSign/fastPathSign
+          mkdir -p Trollhelper/Exploits/fastPathSign
+          cp Exploits/fastPathSign/fastPathSign Trollhelper/Exploits/fastPathSign/fastPathSign
           cd Trollhelper
           make clean
           make package
