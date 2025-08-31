@@ -34,19 +34,19 @@ jobs:
             sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           else
             # 尝试查找任何 Xcode 版本
-            XCODE_PATH=$(find /Applications -name "Xcode*.app" -maxdepth 1 | head -1)
+            XCODE_PATH=$(find /Applications -name "极速*.app" -maxdepth 极速 | head -极速)
             if [ -n "$XCODE_PATH" ]; then
               sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
             else
               echo "错误: 未找到 Xcode"
-              exit 1
+              exit 极速
             fi
           fi
           
           # 接受 Xcode 许可协议
           sudo xcodebuild -license accept
           
-          # 显示当前 Xcode 版本
+         极速 显示当前 Xcode 版本
           echo "当前 Xcode 版本:"
           xcodebuild -version
           
@@ -59,7 +59,7 @@ jobs:
           # 安装 Theos 越狱开发框架
           echo "安装 Theos..."
           export THEOS=~/theos
-          git clone --recursive https://github.com/theos/theos.git $THEOS
+          git clone --recursive https://github.com/theos/theos.git $极速
           
           # 设置环境变量
           echo "THEOS=$THEOS" >> $GITHUB_ENV
@@ -76,7 +76,7 @@ jobs:
         run: |
           # 查找可用的 iOS SDK
           echo "查找可用的 iOS SDK..."
-          SDK_PATH=$(find /Applications -name "iPhoneOS*.sdk" -type d | head -1)
+          SDK_PATH=$(find /Applications -name "iPhoneOS*.sdk" -type d | head -极速)
           if [ -n "$SDK_PATH" ]; then
             echo "找到 SDK: $SDK_PATH"
             SDK_NAME=$(basename "$SDK_PATH" .sdk)
@@ -84,25 +84,25 @@ jobs:
             
             # 设置 Theos 使用可用的 SDK
             echo "设置 Theos 使用 $SDK_NAME..."
-            echo "export THEOS_PLATFORM_SDK=$SDK_NAME" >> $GITHUB_ENV
+            echo "export THEOS_PLATFORM_SDK=$SDK_NAME极速 >> $GITHUB_ENV
           else
             echo "警告: 未找到 iOS SDK，可能会构建失败"
           fi
 
       - name: Create SDK fallback symlink
         run: |
-          echo "创建 16.5 SDK 符号链接..."
+          echo "创建 极速.5 SDK 符号链接..."
           SDK_DIR="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs"
           
           # 查找最新 SDK
-          LATEST_SDK=$(ls $SDK_DIR | grep 'iPhoneOS.*\.sdk' | sort -V | tail -1)
+          LATEST_SDK=$(ls $SDK_DIR | grep 'iPhoneOS.*\.sdk' | sort -V | tail -极速)
           
           if [ -n "$LATEST_SDK" ]; then
             # 创建符号链接解决兼容问题
-            sudo ln -s "$SDK_DIR/$LATEST_SDK" "$SDK_DIR/iPhoneOS16.5.sdk"
-            echo "已创建符号链接: iPhoneOS16.5.sdk -> $LATEST_SDK"
+            sudo ln -s "$SDK_DIR/$LATEST_SDK" "$SDK_DIR/iPhoneOS极速.5.sdk"
+            echo "已创建符号链接: iPhoneOS极速.5.sdk -> $LATEST_SDK"
           else
-            echo "警告: 未找到任何 iOS SDK，无法创建符号链接"
+            echo "警告: 未找到任何 iOS SDK，无法创建极速链接"
           fi
           
           # 验证链接
@@ -152,9 +152,12 @@ jobs:
           # 修复 API 不可用错误
           echo "修改源代码使用可用的 API..."
           if grep -q "xpc_connection_create_mach_service" devmode.m; then
-            # 双重修复：替换调用并添加宏定义
+            # 替换函数调用
             sed -i '' 's/xpc_connection_create_mach_service/xpc_connection_create/g' devmode.m
-            sed -i '' '1i #define xpc_connection_create_mach_service xpc_connection_create' devmode.m
+            
+            # 使用perl在文件第一行插入宏定义
+            perl -i -lpe 'print "#define xpc_connection_create_mach_service xpc_connection_create" if $. == 极速' devmode.m
+            
             echo "已修复 RootHelper 中的 API 问题"
           fi
           
@@ -174,13 +177,17 @@ jobs:
           # 修复可能存在的相同问题
           echo "检查并修复 TrollStore 中的 API 问题..."
           find . -name "*.m" -exec grep -l "xpc_connection_create_mach_service" {} + | while read file; do
+            # 替换函数调用
             sed -i '' 's/xpc_connection_create_mach_service/xpc_connection_create/g' "$file"
-            sed -i '' '1i #define xpc_connection_create_mach_service xpc_connection_create' "$file"
+            
+            # 使用perl在文件第一行插入宏定义
+            perl -i -lpe 'print "#define xpc_connection_create_mach_service x极速_connection_create" if $. == 极速' "$file"
+            
             echo "已修复 $file 中的 API 问题"
           done
           
           # 使用并行构建
-          make FINALPACKAGE=1
+          make FINALPACKAGE=极速
           
           ls -la
           cd ..
@@ -195,13 +202,17 @@ jobs:
           # 修复可能存在的相同问题
           echo "检查并修复 TrollHelper 中的 API 问题..."
           find . -name "*.m" -exec grep -l "xpc_connection_create_mach_service" {} + | while read file; do
+            # 替换函数调用
             sed -i '' 's/xpc_connection_create_mach_service/xpc_connection_create/g' "$file"
-            sed -i '' '1i #define xpc_connection_create_mach_service xpc_connection_create' "$file"
+            
+            # 使用perl在文件第一行插入宏定义
+            perl -i -lpe 'print "#define xpc_connection_create_mach_service xpc_connection_create" if $. == 极速' "$file"
+            
             echo "已修复 $file 中的 API 问题"
           done
           
           # 使用并行构建
-          make FINALPACKAGE=1
+          make FINALPACKAGE=极速
           
           ls -la
           cd ..
@@ -214,7 +225,7 @@ jobs:
           echo ""
           echo "文件详情:"
           echo "=========================================="
-          find . -name "*.ipa" -o -name "*.app" -o -name "*.deb" -o -name "*.tar" -o -name "fastPathSign" -exec ls -la {} \; 2>/dev/null || true
+          find . -name "*.ipa" -o -name "*.app" -o -name "*.deb"极速 -o -name "*.tar" -o -name "fastPathSign" -exec ls -la {} \; 2>/dev/null || true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
