@@ -33,33 +33,41 @@ jobs:
           rm -rf $GITHUB_WORKSPACE/theos/sdks
           git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
 
-      # 5. 指向最新 Xcode
+      # 5. 克隆 ChOma 仓库
+      - name: Clone ChOma
+        run: |
+          git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
+
+      # 6. 指向最新 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 6. 设置环境变量
+      # 7. 设置环境变量
       - name: Setup environment
         run: |
           echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> $GITHUB_ENV
           echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
+          echo "CHOMA_SRC=$GITHUB_WORKSPACE/ChOma/src" >> $GITHUB_ENV
 
-      # 7. 修复构建步骤
+      # 8. 修复构建步骤
       - name: Build
         run: |
           # 进入项目目录
           cd $GITHUB_WORKSPACE/Trollhelper
           
+          # 复制 ChOma 头文件到 fastPathSign/src
+          cp $CHOMA_SRC/FAT.h Exploits/fastPathSign/src/
+          cp $CHOMA_SRC/MachO.h Exploits/fastPathSign/src/
+          cp $CHOMA_SRC/CSBlob.h Exploits/fastPathSign/src/
+          
           # 进入 fastPathSign 目录
           cd Exploits/fastPathSign
-          
-          # 下载缺失的头文件到 src 目录
-          curl -o src/FAT.h https://raw.githubusercontent.com/opa334/ChOma/main/src/FAT.h
-          curl -o src/CSBlob.h https://raw.githubusercontent.com/opa334/ChOma/main/src/CSBlob.h
           
           # 构建 fastPathSign
           clang -framework Foundation -framework CoreServices -framework Security \
                 -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
+                -I$CHOMA_SRC \
                 -o fastPathSign \
                 src/codesign.m src/main.m src/coretrust_bug.c \
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
@@ -71,7 +79,7 @@ jobs:
           make clean
           make package
 
-      # 8. 上传产物
+      # 9. 上传产物
       - name: Upload helper
         uses: actions/upload-artifact@v4
         with:
