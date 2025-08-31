@@ -38,10 +38,10 @@ jobs:
       # 6. 准备 fastPathSign
       - name: Prepare fastPathSign
         run: |
-          mkdir -p Trollhelper/Exploits/fastPathSign
+          mkdir -p $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
           curl -L https://github.com/opa334/TrollStore/releases/download/2.0.15/fastPathSign \
-               -o Trollhelper/Exploits/fastPathSign/fastPathSign
-          chmod +x Trollhelper/Exploits/fastPathSign/fastPathSign
+               -o $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign/fastPathSign
+          chmod +x $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign/fastPathSign
 
       # 7. 构建
       - name: Build
