@@ -35,20 +35,24 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 6. 构建
+      # 6. 准备 fastPathSign
+      - name: Prepare fastPathSign
+        run: |
+          mkdir -p Trollhelper/Exploits/fastPathSign
+          curl -L https://github.com/opa334/TrollStore/releases/download/2.0.15/fastPathSign \
+               -o Trollhelper/Exploits/fastPathSign/fastPathSign
+          chmod +x Trollhelper/Exploits/fastPathSign/fastPathSign
+
+      # 7. 构建
       - name: Build
         env:
           THEOS: ${{ github.workspace }}/theos
         run: |
           cd Trollhelper
-          # macOS / Linux
-          curl -L https://github.com/opa334/TrollStore/releases/download/2.0.15/fastPathSign \
-          -o Exploits/fastPathSign/fastPathSign
-          chmod +x Exploits/fastPathSign/fastPathSign
           make clean
           make package
 
-      # 7. 上传产物
+      # 8. 上传产物
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
