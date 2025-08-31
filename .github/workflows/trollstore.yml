@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          path: Trollhelper  # 明确指定检出路径
+          path: Trollhelper
 
       # 2. 安装依赖
       - name: Install dependencies
@@ -33,41 +33,45 @@ jobs:
           rm -rf $GITHUB_WORKSPACE/theos/sdks
           git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
 
-      # 5. 克隆 ChOma 项目 (解决头文件缺失问题)
-      - name: Clone ChOma
-        run: |
-          git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
-
-      # 6. 指向最新 Xcode
+      # 5. 指向最新 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 7. 设置环境变量 (解决openssl路径问题)
+      # 6. 设置环境变量
       - name: Setup environment
         run: |
           echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> $GITHUB_ENV
+          echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
 
-      # 8. 修复构建步骤
+      # 7. 修复构建步骤
       - name: Build
         run: |
           # 进入项目目录
           cd $GITHUB_WORKSPACE/Trollhelper
           
-          # 修复 fastPathSign 的构建路径
+          # 修复 fastPathSign 构建
           cd Exploits/fastPathSign
-          make OPENSSL_INCLUDE="-I${{ env.OPENSSL_PREFIX }}/include" CHOMA_INCLUDE="-I$GITHUB_WORKSPACE/ChOma/src"
-          cd ../..
           
-          # 修复文件复制路径
-          cp Exploits/fastPathSign/fastPathSign Exploits/fastPathSign/fastPathSign
+          # 下载缺失的头文件
+          curl -O https://raw.githubusercontent.com/opa334/ChOma/main/src/FAT.h
+          curl -O https://raw.githubusercontent.com/opa334/ChOma/main/src/CSBlob.h
+          
+          # 构建 fastPathSign
+          clang -framework Foundation -framework CoreServices -framework Security \
+                -fobjc-arc \
+                -I${{ env.OPENSSL_PREFIX }}/include \
+                -o fastPathSign \
+                src/codesign.m src/main.m src/coretrust_bug.c \
+                -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
+          
+          # 返回项目根目录
+          cd ../..
           
           # 构建主项目
           make clean
           make package
-        env:
-          THEOS: $GITHUB_WORKSPACE/theos
 
-      # 9. 上传产物
+      # 8. 上传产物
       - name: Upload helper
         uses: actions/upload-artifact@v4
         with:
