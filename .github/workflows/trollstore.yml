@@ -36,7 +36,7 @@ jobs:
       # 5. 克隆 ChOma 项目 (解决头文件缺失问题)
       - name: Clone ChOma
         run: |
-          git clone https://github.com/ChOma/ChOma.git $GITHUB_WORKSPACE/ChOma
+          git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
 
       # 6. 指向最新 Xcode
       - name: Select Xcode
