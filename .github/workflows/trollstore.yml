@@ -150,7 +150,11 @@ jobs:
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
           
-          # 使用并行构建和符号链接的 SDK
+          # 修复 API 不可用错误
+          echo "应用 API 可用性修复..."
+          export TARGET_CFLAGS="-D_XPC_CONNECTION_CREATE_MACH_SERVICE_AVAILABLE=1"
+          
+          # 使用并行构建
           make DEBUG=0
           
           ls -la
@@ -163,6 +167,10 @@ jobs:
           # 设置 Theos 环境变量
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
+          
+          # 修复 API 不可用错误
+          echo "应用 API 可用性修复..."
+          export TARGET_CFLAGS="-D_XPC_CONNECTION_CREATE_MACH_SERVICE_AVAILABLE=1"
           
           # 使用并行构建
           make FINALPACKAGE=1
@@ -177,6 +185,10 @@ jobs:
           # 设置 Theos 环境变量
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
+          
+          # 修复 API 不可用错误
+          echo "应用 API 可用性修复..."
+          export TARGET_CFLAGS="-D_XPC_CONNECTION_CREATE_MACH_SERVICE_AVAILABLE=1"
           
           # 使用并行构建
           make FINALPACKAGE=1
