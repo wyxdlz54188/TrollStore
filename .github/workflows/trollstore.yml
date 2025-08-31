@@ -7,42 +7,38 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest   # 必须 macOS，自带 Xcode Command Line Tools
+    runs-on: macos-latest
 
     steps:
-      # 1. 拉取 TrollStore 源码
-      - name: Checkout TrollStore
+      # 1. 拉取“当前仓库”的源码（就是你的本地仓库）
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          repository: opa334/TrollStore
-          path: trollstore
 
-      # 2. 手动安装/更新依赖
+      # 2. 安装依赖
       - name: Install dependencies
         run: |
           brew update || true
           brew install ldid xz
 
-      # 3. 手动安装 Theos（不再用官方脚本）
+      # 3. 手动克隆 Theos
       - name: Clone Theos
         run: |
           export THEOS=$HOME/theos
           git clone --recursive https://github.com/theos/theos.git $THEOS
 
-      # 4. 手动拉取 SDK（绕过官方脚本的网络请求）
+      # 4. 手动克隆 SDK
       - name: Clone SDK
         run: |
           export THEOS=$HOME/theos
           rm -rf $THEOS/sdks
           git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks
 
-      # 5. 选择最新版 Xcode
+      # 5. 指向最新 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
       # 6. 构建
       - name: Build
-        working-directory: trollstore
         env:
           THEOS: ${{ github.workspace }}/../theos
         run: |
@@ -54,4 +50,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TrollStore
-          path: trollstore/packages/*
+          path: packages/*
