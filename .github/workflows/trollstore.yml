@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest   # 必须 macOS 才能用 Xcode
+    runs-on: macos-latest   # 必须 macOS
 
     steps:
       # 1. 拉取 TrollStore 源码
@@ -17,26 +17,30 @@ jobs:
           repository: opa334/TrollStore
           path: trollstore
 
-      # 2. 安装 Theos（使用正确的 action）
-      - name: Install Theos
-        uses: Randomblock1/theos-action@v1
-        with:
-          theos-dir: theos
-          orion: 'false'
+      # 2. 手动拉取 Theos
+      - name: Clone Theos
+        run: |
+          git clone --depth=1 https://github.com/theos/theos.git $GITHUB_WORKSPACE/theos
 
-      # 3. 选择最新版 Xcode
+      # 3. 手动拉取 SDK（iPhoneOS 15.5 示例）
+      - name: Clone SDK
+        run: |
+          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
+
+      # 4. 选择最新版 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 4. 构建
+      # 5. 构建
       - name: Build
         working-directory: trollstore
+        env:
+          THEOS: ${{ github.workspace }}/theos
         run: |
-          export THEOS=$GITHUB_WORKSPACE/theos
           make clean
           make package
 
-      # 5. 上传产物
+      # 6. 上传产物
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
