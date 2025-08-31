@@ -50,6 +50,21 @@ jobs:
           echo "当前 Xcode 版本:"
           xcodebuild -version
 
+      - name: Install Theos
+        run: |
+          # 安装 Theos 越狱开发框架
+          echo "安装 Theos..."
+          export THEOS=~/theos
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          
+          # 设置环境变量
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          echo "PATH=$THEOS/bin:$PATH" >> $GITHUB_ENV
+          
+          # 验证 Theos 安装
+          echo "Theos 安装完成，路径: $THEOS"
+          ls -la $THEOS
+
       - name: Install dependencies
         run: |
           # 安装 Homebrew (如果尚未安装)
@@ -63,8 +78,7 @@ jobs:
           brew install ldid dpkg pkg-config openssl@3
           
           # 设置 openssl 路径
-          echo 'export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3/lib/pkgconfig"' >> ~/.zprofile
-          eval "$(/opt/homebrew/bin/brew shellenv)"
+          echo 'export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3/lib/pkgconfig"' >> $GITHUB_ENV
           
           # 安装 pwnify
           if [ -d "Pwnify" ]; then
@@ -84,26 +98,39 @@ jobs:
           cp fastPathSign ../../
           cd ../..
 
-      - name: Build RootHelper
+      - name: Build RootHelper with Theos
         run: |
           echo "构建 RootHelper..."
           cd RootHelper
+          # 设置 Theos 环境变量
+          export THEOS=~/theos
+          export PATH=$THEOS/bin:$PATH
+          
+          # 使用 Theos 构建
           make DEBUG=0
           ls -la
           cd ..
 
-      - name: Build TrollStore
+      - name: Build TrollStore with Theos
         run: |
           echo "构建 TrollStore..."
           cd TrollStore
+          # 设置 Theos 环境变量
+          export THEOS=~/theos
+          export PATH=$THEOS/bin:$PATH
+          
           make FINALPACKAGE=1
           ls -la
           cd ..
 
-      - name: Build TrollHelper
+      - name: Build TrollHelper with Theos
         run: |
           echo "构建 TrollHelper..."
           cd TrollHelper
+          # 设置 Theos 环境变量
+          export THEOS=~/theos
+          export PATH=$THEOS/bin:$PATH
+          
           make FINALPACKAGE=1
           ls -la
           cd ..
