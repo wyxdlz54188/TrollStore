@@ -116,7 +116,7 @@ jobs:
                 -Isrc \
                 -o fastPathSign \
                 src/codesign.m src/main.m src/coretrust_bug.c \
-                $GITHUB_WORKSPACE/ChOma/output/lib/libchoma.a \ # 使用完整路径
+                $GITHUB_WORKSPACE/ChOma/output/lib/libchoma.a \
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto \
                 -ObjC
           
