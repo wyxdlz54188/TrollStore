@@ -49,6 +49,10 @@ jobs:
           # 显示当前 Xcode 版本
           echo "当前 Xcode 版本:"
           xcodebuild -version
+          
+          # 显示可用的 SDK
+          echo "可用的 SDK:"
+          xcodebuild -showsdks
 
       - name: Install Theos
         run: |
@@ -64,6 +68,23 @@ jobs:
           # 验证 Theos 安装
           echo "Theos 安装完成，路径: $THEOS"
           ls -la $THEOS
+
+      - name: Configure Theos for available SDK
+        run: |
+          # 查找可用的 iOS SDK
+          echo "查找可用的 iOS SDK..."
+          SDK_PATH=$(find /Applications -name "iPhoneOS*.sdk" -type d | head -1)
+          if [ -n "$SDK_PATH" ]; then
+            echo "找到 SDK: $SDK_PATH"
+            SDK_NAME=$(basename "$SDK_PATH" .sdk)
+            echo "SDK 名称: $SDK_NAME"
+            
+            # 设置 Theos 使用可用的 SDK
+            echo "设置 Theos 使用 $SDK_NAME..."
+            echo "export THEOS_PLATFORM_SDK=$SDK_NAME" >> $GITHUB_ENV
+          else
+            echo "警告: 未找到 iOS SDK，可能会构建失败"
+          fi
 
       - name: Install dependencies
         run: |
@@ -106,8 +127,15 @@ jobs:
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
           
-          # 使用 Theos 构建
-          make DEBUG=0
+          # 如果有可用的 SDK，使用它
+          if [ -n "$THEOS_PLATFORM_SDK" ]; then
+            echo "使用 SDK: $THEOS_PLATFORM_SDK"
+            make DEBUG=0 THEOS_PLATFORM_SDK="$THEOS_PLATFORM_SDK"
+          else
+            echo "使用默认 SDK"
+            make DEBUG=0
+          fi
+          
           ls -la
           cd ..
 
@@ -119,7 +147,15 @@ jobs:
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
           
-          make FINALPACKAGE=1
+          # 如果有可用的 SDK，使用它
+          if [ -n "$THEOS_PLATFORM_SDK" ]; then
+            echo "使用 SDK: $THEOS_PLATFORM_SDK"
+            make FINALPACKAGE=1 THEOS_PLATFORM_SDK="$THEOS_PLATFORM_SDK"
+          else
+            echo "使用默认 SDK"
+            make FINALPACKAGE=1
+          fi
+          
           ls -la
           cd ..
 
@@ -131,7 +167,15 @@ jobs:
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
           
-          make FINALPACKAGE=1
+          # 如果有可用的 SDK，使用它
+          if [ -n "$THEOS_PLATFORM_SDK" ]; then
+            echo "使用 SDK: $THEOS_PLATFORM_SDK"
+            make FINALPACKAGE=1 THEOS_PLATFORM_SDK="$THEOS_PLATFORM_SDK"
+          else
+            echo "使用默认 SDK"
+            make FINALPACKAGE=1
+          fi
+          
           ls -la
           cd ..
 
