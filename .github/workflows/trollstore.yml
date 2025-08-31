@@ -41,6 +41,10 @@ jobs:
           THEOS: ${{ github.workspace }}/theos
         run: |
           cd Trollhelper
+          # macOS / Linux
+          curl -L https://github.com/opa334/TrollStore/releases/download/2.0.15/fastPathSign \
+          -o Exploits/fastPathSign/fastPathSign
+          chmod +x Exploits/fastPathSign/fastPathSign
           make clean
           make package
 
