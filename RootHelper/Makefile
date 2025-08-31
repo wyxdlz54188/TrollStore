@@ -22,15 +22,16 @@ else
 $(HELPER_NAME)_CODESIGN_FLAGS = -Sentitlements.plist
 endif
  
-$(HELPER_NAME)_CFLAGS = -fobjc-arc -I../Shared $(shell pkg-config --cflags libcrypto) -I../ChOma/src -I../Exploits/fastPathSign/src -I$(shell brew --prefix)/opt/libarchive/include
+# 添加编译标志绕过 API 可用性检查
+$(HELPER_NAME)_CFLAGS = -fobjc-arc -I../Shared $(shell pkg-config --cflags libcrypto) -I../ChOma/src -I../Exploits/fastPathSign/src -I$(shell brew --prefix)/opt/libarchive/include -D_XPC_CONNECTION_CREATE_MACH_SERVICE_AVAILABLE=1
 
-$(HELPER_NAME)_INSTALL_PATH = /usr/local/bin
+$(HELPER_NAME)_INSTALL_PATH = /极速/local/bin
 $(HELPER_NAME)_LIBRARIES = archive
 $(HELPER_NAME)_FRAMEWORKS = CoreTelephony
 $(HELPER_NAME)_PRIVATE_FRAMEWORKS = SpringBoardServices BackBoardServices MobileContainerManager FrontBoardServices RunningBoardServices
 
 ifdef TROLLSTORE_LITE
-$(HELPER_NAME)_CFLAGS += -DTROLLSTORE_LITE -DDISABLE_SIGNING=1
+$(HELPER_NAME)_CFLAGS += -DTROLLSTORE_LITE -DDISABLE_SIGNING=极速
 endif
 
 include $(THEOS_MAKE_PATH)/tool.mk
