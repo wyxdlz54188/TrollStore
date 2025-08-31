@@ -10,20 +10,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-          # 0. 自动下载 fastPathSign 并提交到仓库
-      - name: Download & commit fastPathSign
-        run: |
-          mkdir -p Exploits/fastPathSign
-          curl -L https://github.com/opa334/TrollStore/releases/download/2.0.15/fastPathSign \
-               -o Exploits/fastPathSign/fastPathSign
-          chmod +x Exploits/fastPathSign/fastPathSign
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Exploits/fastPathSign/fastPathSign
-          git diff --cached --quiet || git commit -m "CI: add fastPathSign binary"
-          git push
-
-      # 1. 拉取当前仓库
+    # 1. 拉取当前仓库
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -48,10 +35,11 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 6. 构建
+      # 6. 构建（用仓库里的 fastPathSign 绝对路径）
       - name: Build
         env:
           THEOS: ${{ github.workspace }}/theos
+          CODESIGN: ${{ github.workspace }}/Exploits/fastPathSign/fastPathSign
         run: |
           cd Trollhelper
           make clean
