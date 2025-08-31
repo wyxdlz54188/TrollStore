@@ -1,104 +1,56 @@
-name: Build TrollStore
+name: Build TrollStore and List Artifacts
 
 on:
-  push:
-    branches: [ main, master ] # 在推送到主分支时触发
-  pull_request:
-    branches: [ main, master ] # 在向主分支提PR时触发
-  workflow_dispatch: # 允许手动触发工作流
+  workflow_dispatch: # 只允许手动触发
 
 jobs:
   build:
-    runs-on: macos-latest # TrollStore 编译需要 macOS 环境
-
+    runs-on: macos-latest
+    
     steps:
-      # 1. 检出你的代码仓库
-      - name: Checkout repository
+      - name: Checkout repository with submodules
         uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
-          submodules: 'recursive' # 如果 TrollStore 有子模块，递归检出
 
-      # 2. 设置缓存以加速后续构建（例如依赖缓存）
-      #    由于 TrollStore 的构建依赖可能较特殊，此步骤可能需要调整或省略
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Setup Xcode
+        uses: actions/setup-xcode@v1
         with:
-          path: |
-            ~/Library/Developer/Xcode/DerivedData
-            ~/Library/Caches/CocoaPods
-            Pods
-            vendor/bundle
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-deps-
+          xcode-version: '15.0'
 
-      # 3. 选择或设置 Xcode 版本 (可选，但建议固定版本以确保一致性)
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_15.0.app/Contents/Developer # 请根据实际情况调整版本号
-        # 或者使用 GitHub 的 actions/setup-xcode 动作
-        # uses: actions/setup-xcode@v1
-        # with:
-        #   xcode-version: '15.0' # 指定所需的 Xcode 版本
-
-      # 4. 安装 Homebrew (如果构建脚本需要)
-      - name: Install Homebrew
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-      # 5. 安装构建所需的特定依赖（请根据 TrollStore 的文档调整）
-      #    例如，可能需要的工具、库或者 Ruby gems (for CocoaPods), Swift Package Manager 等。
       - name: Install dependencies
         run: |
-          # 示例：更新 Homebrew 并安装某个工具
-          brew update
-          # brew install some-tool
-          # 示例：安装 CocoaPods (如果项目使用)
-          # sudo gem install cocoapods
+          brew install ldid dpkg
+          # 安装 pwnify
+          if [ -d "Pwnify" ]; then
+            cd Pwnify
+            make
+            sudo cp pwnify /usr/local/bin/
+            cd ..
+          fi
 
-      # 6. 执行项目特定的依赖安装（如果适用）
-      #   例如，安装 CocoaPods 依赖
-      - name: Install Pods
+      - name: Build TrollStore
         run: |
-          # 如果项目有 Podfile
-          pod install --repo-update
-        # 仅在存在 Podfile 时运行
-        if: exists('Podfile')
-
-      # 7. 执行构建命令（这是最关键的部分，请务必参照 TrollStore 的官方文档）
-      #    常见的命令包括 xcodebuild, make, 或项目自定义的脚本。
-      - name: Build with Xcode
+          make all
+          
+      - name: List all build artifacts
         run: |
-          # 示例：使用 xcodebuild 编译 workspace 或 project
-          # set -o pipefail && xcodebuild -workspace "TrollStore.xcworkspace" -scheme "TrollStore" -sdk iphoneos -configuration Release CODE_SIGNING_ALLOWED=NO clean build | xcpretty
-          # 或者，如果项目提供了 Makefile：
-          # make build
-          # 或者，运行项目指定的构建脚本
-          # ./build.sh
-        env:
-          # 可能需要的环境变量
-          FORCE_COLOR: 3
+          echo "构建完成，_build 目录内容如下:"
+          echo "=========================================="
+          find ./_build -type f -o -type d | sort
+          echo ""
+          echo "文件详情:"
+          echo "=========================================="
+          find ./_build -type f -exec ls -la {} \;
+          echo ""
+          echo "文件大小统计:"
+          echo "=========================================="
+          find ./_build -type f -exec du -h {} \; | sort -hr
 
-      # 8. 收集构建产物（例如 .ipa 文件）
-      - name: Collect build artifacts
-        run: |
-          # 在 DerivedData 目录或其他指定输出目录中查找生成的 .ipa 或 .app 文件
-          # 示例：将产物复制到工作流的一个特定目录下
-          mkdir -p output
-          find ~/Library/Developer/Xcode/DerivedData -name "*.ipa" -exec cp {} output/ \;
-          # 列出 output 目录，确认产物
-          ls -la output/
-
-      # 9. 上传构建产物（以便你可以从 GitHub Actions 界面下载）
-      - name: Upload IPA artifact
+      - name: Upload all build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: TrollStore-Build-Output
-          path: output/ # 上传之前创建的 output 目录下的所有文件
-          if-no-files-found: error # 如果没找到文件则失败
-
-      # 10. （可选）缓存清理或其他后处理步骤
-      - name: Clean up
-        run: |
-          # 例如清理临时文件
-          brew cleanup
+          name: TrollStore-Complete-Build
+          path: ./_build/
+          if-no-files-found: error
