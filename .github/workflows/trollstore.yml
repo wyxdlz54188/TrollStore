@@ -114,44 +114,17 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper
           
-          # 验证 Theos 环境
-          echo "THEOS path: $THEOS"
-          if [ ! -d "$THEOS/makefiles" ]; then
-            echo "❌ Theos makefiles directory missing!"
-            exit 1
-          fi
+          # 设置 Theos 环境变量
+          export THEOS=$GITHUB_WORKSPACE/theos
+          export PATH=$THEOS/bin:$PATH
           
-          # 检查 Makefile
-          if [ ! -f "Makefile" ]; then
-            echo "❌ Makefile not found!"
-            exit 1
-          fi
-          
-          # 修改压缩格式（常见问题）
-          if [ -f "$THEOS/makefiles/package/deb.mk" ]; then
-            sed -i '' 's/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= lzma/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= gzip/g' $THEOS/makefiles/package/deb.mk
-            echo "✅ Compression format changed to gzip"
-          fi
-          
-          # 清理并构建
-          make clean
-          
-          # 尝试构建 package
-          make package || {
-            echo "⚠️ 直接 make package 失败，尝试诊断问题..."
-            
-            # 检查 Makefile 中是否有 package 目标
-            if ! grep -q "package:" Makefile; then
-              echo "❌ Makefile 中缺少 package 目标"
-              echo "=== Makefile 内容 ==="
-              cat Makefile
-              exit 1
-            fi
-            
-            # 尝试使用详细模式构建
-            echo "尝试使用详细模式构建..."
-            make package VERBOSE=1
-          }
+          # 使用 Theos 标准命令构建
+          $THEOS/bin/make package \
+            THEOS=$THEOS \
+            TARGET=iphone:clang:latest:12.0 \
+            ARCHS=arm64 \
+            DEBUG=0 \
+            FINALPACKAGE=1
 
       # 11. 上传产物
       - name: Upload helper
