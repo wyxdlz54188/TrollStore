@@ -37,10 +37,10 @@ jobs:
 
       # 6. 构建（用仓库里的 fastPathSign 绝对路径）
       - name: Build
-        env:
-          THEOS: ${{ github.workspace }}/theos
-          CODESIGN: ${{ github.workspace }}/Exploits/fastPathSign/fastPathSign
         run: |
+        cp Exploits/fastPathSign/fastPathSign Trollhelper/../Exploits/fastPathSign/fastPathSign || \
+        mkdir -p Trollhelper/Exploits/fastPathSign && \
+        cp Exploits/fastPathSign/fastPathSign Trollhelper/Exploits/fastPathSign/fastPathSign
           cd Trollhelper
           make clean
           make package
