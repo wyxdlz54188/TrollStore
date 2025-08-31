@@ -69,12 +69,13 @@ jobs:
           # 3. 完全移除 csd_code_directory_update 调用
           sed -i '' '/csd_code_directory_update/d' coretrust_bug.c
           
-          # 4. 添加缺失的头文件包含
-          sed -i '' $'s/#include "coretrust_bug.h"/#include "coretrust_bug.h"\\\n#include "MachO.h"\\\n#include "Fat.h"\\\n/g' main.m
-          sed -i '' $'s/#include <CommonCrypto\/CommonDigest.h>/#include <CommonCrypto\/CommonDigest.h>\\\n#include "CSBlob.h"\\\n#include "MachOLoadCommand.h"/g' coretrust_bug.c
+          # 4. 修复头文件包含问题 - 这是关键修复
+          # 在 coretrust_bug.h 中添加必要的头文件包含
+          sed -i '' '1s/^/#ifndef CORETRUST_BUG_H\n#define CORETRUST_BUG_H\n\n#include "CSBlob.h"\n#include "MachO.h"\n/' coretrust_bug.h
+          echo -e "\n#endif // CORETRUST_BUG_H" >> coretrust_bug.h
           
-          # 5. 添加必要的函数声明
-          echo -e "\n// 添加缺失的函数声明\nCS_DecodedBlob *csd_code_directory_init(MachO *macho, int hashType, bool alternate);" >> coretrust_bug.h
+          # 5. 在 main.m 中添加必要的头文件包含
+          sed -i '' $'s/#include "coretrust_bug.h"/#include "coretrust_bug.h"\\\n#include "MachO.h"\\\n#include "Fat.h"\\\n/g' main.m
 
       # 9. 构建 fastPathSign
       - name: Build fastPathSign
