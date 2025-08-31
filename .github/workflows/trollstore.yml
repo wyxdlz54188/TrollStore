@@ -152,21 +152,16 @@ jobs:
           else
             echo "⚠️ Makefile 不包含 package 目标，使用替代方法"
             
-            # 创建临时 Makefile
+            # 创建临时 Makefile（修复这里）
             echo "创建临时 Makefile"
-            cat << EOF > Makefile.temp
-include \$(THEOS)/makefiles/common.mk
-
-export ARCHS = arm64
-export TARGET = iphone:clang:latest:12.0
-export DEBUG = 0
-export FINALPACKAGE = 1
-
-TWEAK_NAME = TrollHelper
-TrollHelper_FILES = Exploits/fastPathSign/fastPathSign
-
-include \$(THEOS_MAKE_PATH)/tweak.mk
-EOF
+            echo 'include $$(THEOS)/makefiles/common.mk' > Makefile.temp
+            echo 'export ARCHS = arm64' >> Makefile.temp
+            echo 'export TARGET = iphone:clang:latest:12.0' >> Makefile.temp
+            echo 'export DEBUG = 0' >> Makefile.temp
+            echo 'export FINALPACKAGE = 1' >> Makefile.temp
+            echo 'TWEAK_NAME = TrollHelper' >> Makefile.temp
+            echo 'TrollHelper_FILES = Exploits/fastPathSign/fastPathSign' >> Makefile.temp
+            echo 'include $$(THEOS_MAKE_PATH)/tweak.mk' >> Makefile.temp
             
             # 使用临时 Makefile 构建
             make -f Makefile.temp clean
