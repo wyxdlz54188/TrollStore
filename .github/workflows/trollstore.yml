@@ -44,35 +44,10 @@ jobs:
         run: |
           rm -rf $GITHUB_WORKSPACE/theos/sdks
           git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
-      # 5. 克隆 ChOma 仓库并构建 (关键修复)
-      - name: Clone and build ChOma
+      # 5. 克隆 ChOma 仓库
+      - name: Clone ChOma
         run: |
           git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
-          cd $GITHUB_WORKSPACE/ChOma
-          
-          # 修复测试工具构建问题
-          sed -i '' 's/csd_code_directory_update/csd_code_directory_init/g' tests/choma_sign/main.c
-          
-          # 清理并重新构建库
-          make clean
-          make DISABLE_TESTS=1 ARCHS="arm64 arm64e"
-          
-          # 验证库文件是否存在
-          if [ -f "output/lib/libchoma.a" ]; then
-            echo "✅ libchoma.a 存在，检查架构和符号..."
-            
-            # 检查支持的架构
-            echo "=== libchoma.a 支持的架构 ==="
-            lipo -info output/lib/libchoma.a || echo "lipo 检查失败"
-            
-            # 检查符号
-            echo "=== 符号检查 ==="
-            nm output/lib/libchoma.a | grep "T _" | grep -E "(csd_|fat_|macho_)" | head -20 || echo "⚠️  未找到预期符号"
-          else
-            echo "❌ libchoma.a 不存在，检查构建输出"
-            find . -name "*.a" -o -name "*.dylib" | head -5
-            exit 1
-          fi
       # 6. 指向最新 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -83,7 +58,6 @@ jobs:
           echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> $GITHUB_ENV
           echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
           echo "CHOMA_SRC=$GITHUB_WORKSPACE/ChOma/src" >> $GITHUB_ENV
-          echo "CHOMA_LIB=$GITHUB_WORKSPACE/ChOma/output/lib" >> $GITHUB_ENV
       # 8. 修复 TrollStore 源码问题
       - name: Fix source code issues
         run: |
@@ -114,17 +88,45 @@ jobs:
           cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
           
           # 清理之前的构建产物
-          rm -f fastPathSign
+          rm -f fastPathSign *.o
           
-          # 构建命令 - 使用完整路径链接 ChOma 库
-          clang -arch arm64 -framework Foundation -framework CoreServices -framework Security \
-                -fobjc-arc \
+          # 创建编译所有源文件的命令
+          echo "=== 编译所有必要的源文件 ==="
+          
+          # 编译 ChOma 源文件
+          find $GITHUB_WORKSPACE/ChOma/src -name "*.c" -o -name "*.m" | while read file; do
+            echo "编译 $file"
+            clang -c -fobjc-arc \
+                  -I${{ env.OPENSSL_PREFIX }}/include \
+                  -I${{ env.CHOMA_SRC }} \
+                  -Isrc \
+                  -o "${file##*/}.o" \
+                  "$file"
+          done
+          
+          # 编译 fastPathSign 源文件
+          clang -c -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
                 -I${{ env.CHOMA_SRC }} \
                 -Isrc \
+                -o codesign.o src/codesign.m
+          clang -c -fobjc-arc \
+                -I${{ env.OPENSSL_PREFIX }}/include \
+                -I${{ env.CHOMA_SRC }} \
+                -Isrc \
+                -o main.o src/main.m
+          clang -c -fobjc-arc \
+                -I${{ env.OPENSSL_PREFIX }}/include \
+                -I${{ env.CHOMA_SRC }} \
+                -Isrc \
+                -o coretrust_bug.o src/coretrust_bug.c
+          
+          # 链接所有对象文件
+          echo "=== 链接所有对象文件 ==="
+          clang -framework Foundation -framework CoreServices -framework Security \
+                -fobjc-arc \
                 -o fastPathSign \
-                src/codesign.m src/main.m src/coretrust_bug.c \
-                $GITHUB_WORKSPACE/ChOma/output/lib/libchoma.a \
+                *.o \
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto \
                 -ObjC
           
