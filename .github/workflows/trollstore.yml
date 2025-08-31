@@ -54,7 +54,24 @@ jobs:
           echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
           echo "CHOMA_SRC=$GITHUB_WORKSPACE/ChOma/src" >> $GITHUB_ENV
 
-      # 8. 构建 fastPathSign
+      # 8. 修复 TrollStore 源码问题
+      - name: Fix source code issues
+        run: |
+          # 1. 修复文件名大小写问题
+          cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign/src
+          find . -type f -exec sed -i '' 's/#include "FAT.h"/#include "Fat.h"/g' {} \;
+          find . -type f -exec sed -i '' 's/FAT /Fat /g' {} \;
+          
+          # 2. 修复 API 不兼容问题
+          cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign/src
+          sed -i '' 's/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize, memory_stream_get_size(macho->stream))/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize)/g' coretrust_bug.c
+          sed -i '' 's/csd_code_directory_update/csd_code_directory_init/g' coretrust_bug.c
+          
+          # 3. 添加缺失的头文件包含
+          sed -i '' $'s/#include "coretrust_bug.h"/#include "coretrust_bug.h"\\\n#include "MachO.h"\\\n#include "Fat.h"\\\n/g' main.m
+          sed -i '' $'s/#include <CommonCrypto\/CommonDigest.h>/#include <CommonCrypto\/CommonDigest.h>\\\n#include "CSBlob.h"\\\n#include "MachOLoadCommand.h"/g' coretrust_bug.c
+
+      # 9. 构建 fastPathSign
       - name: Build fastPathSign
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
@@ -68,7 +85,7 @@ jobs:
                 src/codesign.m src/main.m src/coretrust_bug.c \
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
 
-      # 9. 构建主项目
+      # 10. 构建主项目
       - name: Build main project
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper
@@ -76,7 +93,7 @@ jobs:
           make clean
           make package
 
-      # 10. 上传产物
+      # 11. 上传产物
       - name: Upload helper
         uses: actions/upload-artifact@v4
         with:
