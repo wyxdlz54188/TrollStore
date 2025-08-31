@@ -100,7 +100,7 @@ jobs:
           
           # 显示文件列表验证
           ls -lA
-      # 9. 构建 fastPathSign
+      # 9. 构建 fastPathSign (关键修复)
       - name: Build fastPathSign
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
@@ -108,7 +108,7 @@ jobs:
           # 清理之前的构建产物
           rm -f fastPathSign
           
-          # 构建命令
+          # 构建命令 - 使用完整路径链接 ChOma 库
           clang -framework Foundation -framework CoreServices -framework Security \
                 -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
@@ -116,7 +116,7 @@ jobs:
                 -Isrc \
                 -o fastPathSign \
                 src/codesign.m src/main.m src/coretrust_bug.c \
-                -L${{ env.CHOMA_LIB }} -lchoma \
+                $GITHUB_WORKSPACE/ChOma/output/lib/libchoma.a \ # 使用完整路径
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto \
                 -ObjC
           
