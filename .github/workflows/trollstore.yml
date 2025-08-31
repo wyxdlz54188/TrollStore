@@ -21,7 +21,6 @@ jobs:
       - name: Clone Theos
         run: |
           bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
-Troubleshooting
       # 4. 选择最新版 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
