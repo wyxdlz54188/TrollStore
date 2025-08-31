@@ -10,7 +10,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # 1. 拉取“当前仓库”的源码（就是你的本地仓库）
+      # 1. 拉取当前仓库
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -20,27 +20,25 @@ jobs:
           brew update || true
           brew install ldid xz
 
-      # 3. 手动克隆 Theos
+      # 3. 克隆 Theos 到固定目录
       - name: Clone Theos
         run: |
-          export THEOS=$HOME/theos
-          git clone --recursive https://github.com/theos/theos.git $THEOS
+          git clone --recursive https://github.com/theos/theos.git $GITHUB_WORKSPACE/theos
 
-      # 4. 手动克隆 SDK
+      # 4. 克隆 SDK
       - name: Clone SDK
         run: |
-          export THEOS=$HOME/theos
-          rm -rf $THEOS/sdks
-          git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks
+          rm -rf $GITHUB_WORKSPACE/theos/sdks
+          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
 
       # 5. 指向最新 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 6. 构建
+      # 6. 构建（THEOS 用绝对路径）
       - name: Build
         env:
-          THEOS: ${{ github.workspace }}/../theos
+          THEOS: ${{ github.workspace }}/theos
         run: |
           make clean
           make package
