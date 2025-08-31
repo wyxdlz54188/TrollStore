@@ -66,12 +66,15 @@ jobs:
           # 2. 修复 API 不兼容问题
           sed -i '' 's/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize, memory_stream_get_size(macho->stream))/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize)/g' coretrust_bug.c
           
-          # 3. 修复参数数量错误
-          sed -i '' 's/csd_code_directory_init(realCodeDirBlob, macho)/csd_code_directory_init(macho, 2, false)/g' coretrust_bug.c
+          # 3. 完全移除 csd_code_directory_update 调用
+          sed -i '' '/csd_code_directory_update/d' coretrust_bug.c
           
           # 4. 添加缺失的头文件包含
           sed -i '' $'s/#include "coretrust_bug.h"/#include "coretrust_bug.h"\\\n#include "MachO.h"\\\n#include "Fat.h"\\\n/g' main.m
           sed -i '' $'s/#include <CommonCrypto\/CommonDigest.h>/#include <CommonCrypto\/CommonDigest.h>\\\n#include "CSBlob.h"\\\n#include "MachOLoadCommand.h"/g' coretrust_bug.c
+          
+          # 5. 添加必要的函数声明
+          echo -e "\n// 添加缺失的函数声明\nCS_DecodedBlob *csd_code_directory_init(MachO *macho, int hashType, bool alternate);" >> coretrust_bug.h
 
       # 9. 构建 fastPathSign
       - name: Build fastPathSign
