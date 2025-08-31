@@ -1,55 +1,44 @@
-# .github/workflows/build-trollstore.yml
 name: Build TrollStore IPA
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:        # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build TrollStore
-    runs-on: macos-latest   # 必须是 macOS 才能用 Xcode 命令行工具
+    runs-on: macos-latest   # 必须 macOS 才能用 Xcode
 
     steps:
       # 1. 拉取 TrollStore 源码
       - name: Checkout TrollStore
         uses: actions/checkout@v4
         with:
-          repository: opa334/TrollStore      # 官方仓库
-          ref: main                          # 或指定 tag
+          repository: opa334/TrollStore
           path: trollstore
 
-      # 2. 安装依赖（本例用 Theos，TrollStore 官方用到了）
-      - name: Setup Theos
-        uses: actions/setup-theos@v1
+      # 2. 安装 Theos（使用正确的 action）
+      - name: Install Theos
+        uses: Randomblock1/theos-action@v1
         with:
-          theos-version: latest
+          theos-dir: theos
+          orion: 'false'
 
-      # 3. 选择 Xcode 版本（用最新即可）
+      # 3. 选择最新版 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
       # 4. 构建
-      - name: Build TrollStore
+      - name: Build
         working-directory: trollstore
         run: |
-          # TrollStore 根目录自带 Makefile
+          export THEOS=$GITHUB_WORKSPACE/theos
           make clean
           make package
 
-      # 5. 找到产物并重命名
-      - name: Locate IPA
-        id: ipa
-        working-directory: trollstore
-        run: |
-          IPA=$(find . -name "*.ipa" -type f | head -n1)
-          echo "path=$IPA" >> $GITHUB_OUTPUT
-          mv "$IPA" TrollStore.ipa
-
-      # 6. 上传产物
+      # 5. 上传产物
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: TrollStore
-          path: trollstore/TrollStore.ipa
+          path: trollstore/packages/*
