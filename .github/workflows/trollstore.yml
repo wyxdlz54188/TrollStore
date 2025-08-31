@@ -20,13 +20,8 @@ jobs:
       # 2. 手动拉取 Theos
       - name: Clone Theos
         run: |
-          git clone --depth=1 https://github.com/theos/theos.git $GITHUB_WORKSPACE/theos
-
-      # 3. 手动拉取 SDK（iPhoneOS 15.5 示例）
-      - name: Clone SDK
-        run: |
-          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
-
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+Troubleshooting
       # 4. 选择最新版 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
