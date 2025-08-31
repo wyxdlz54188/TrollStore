@@ -20,11 +20,25 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install ldid xz openssl@3
-      # 3. 克隆 Theos
-      - name: Clone Theos
+          brew install ldid xz openssl@3 make
+      # 3. 克隆 Theos 并设置 make
+      - name: Clone and setup Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git $GITHUB_WORKSPACE/theos
+          
+          # 确保 bin 目录存在
+          mkdir -p $GITHUB_WORKSPACE/theos/bin
+          
+          # 创建 make 符号链接
+          ln -s $(which make) $GITHUB_WORKSPACE/theos/bin/make
+          
+          # 验证 make 文件是否存在
+          if [ -f "$GITHUB_WORKSPACE/theos/bin/make" ]; then
+            echo "✅ Theos make 文件已创建"
+          else
+            echo "❌ 创建 Theos make 文件失败"
+            exit 1
+          fi
       # 4. 克隆 SDK
       - name: Clone SDK
         run: |
@@ -80,7 +94,7 @@ jobs:
           # 修复头文件包含问题
           sed -i '' '1s/^/#ifndef CORETRUST_BUG_H\n#define CORETRUST_BUG_H\n\n#include "CSBlob.h"\n#include "MachO.h"\n/' coretrust_bug.h
           echo -e "\n#endif // CORETRUST_BUG_H" >> coretrust_bug.h
-      # 9. 构建 fastPathSign (关键修复)
+      # 9. 构建 fastPathSign
       - name: Build fastPathSign
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
@@ -88,7 +102,7 @@ jobs:
           # 清理之前的构建产物
           rm -f fastPathSign
           
-          # 构建命令（移除所有注释和中文）
+          # 构建命令
           clang -framework Foundation -framework CoreServices -framework Security \
                 -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
@@ -114,11 +128,18 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper
           
-          # 设置 Theos 环境变量
+          # 设置环境变量
           export THEOS=$GITHUB_WORKSPACE/theos
           export PATH=$THEOS/bin:$PATH
           
-          # 使用 Theos 标准命令构建
+          # 修改压缩格式（常见问题）
+          if [ -f "$THEOS/makefiles/package/deb.mk" ]; then
+            sed -i '' 's/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= lzma/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= gzip/g' $THEOS/makefiles/package/deb.mk
+            echo "✅ Compression format changed to gzip"
+          fi
+          
+          # 清理并构建
+          make clean
           $THEOS/bin/make package \
             THEOS=$THEOS \
             TARGET=iphone:clang:latest:12.0 \
