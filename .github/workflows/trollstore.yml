@@ -20,81 +20,54 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install ldid xz openssl@3
+          brew install ldid xz openssl@3 git
 
-      # 3. 克隆 Theos
-      - name: Clone Theos
+      # 3. 克隆 Theos 并设置环境
+      - name: Setup Theos
         run: |
-          git clone --recursive https://github.com/theos/theos.git $GITHUB_WORKSPACE/theos
+          export THEOS=$HOME/theos
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          
+          # 克隆 SDK
+          rm -rf $THEOS/sdks
+          git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks
+          
+          # 设置 Theos 环境变量
+          echo "export THEOS=$THEOS" >> ~/.bash_profile
+          echo "export PATH=$THEOS/bin:$PATH" >> ~/.bash_profile
+          source ~/.bash_profile
 
-      # 4. 克隆 SDK
-      - name: Clone SDK
-        run: |
-          rm -rf $GITHUB_WORKSPACE/theos/sdks
-          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
-
-      # 5. 克隆 ChOma 仓库并构建
-      - name: Clone and build ChOma
+      # 4. 克隆 ChOma 仓库
+      - name: Clone ChOma
         run: |
           git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
           cd $GITHUB_WORKSPACE/ChOma
-          
-          # 修复测试工具构建问题
-          sed -i '' 's/csd_code_directory_update/csd_code_directory_init/g' tests/choma_sign/main.c
-          
-          # 构建库并验证
           make DISABLE_TESTS=1
-          
-          # 验证库文件是否存在且包含所需符号
-          if [ -f "output/lib/libchoma.a" ]; then
-            echo "✅ libchoma.a 存在，检查符号..."
-            nm output/lib/libchoma.a | grep "T _" | grep -E "(csd_|fat_|macho_)" | head -10 || echo "⚠️  未找到预期符号，但继续构建"
-          else
-            echo "❌ libchoma.a 不存在，检查构建输出"
-            find . -name "*.a" -o -name "*.dylib" | head -5
-            exit 1
-          fi
 
-      # 6. 指向最新 Xcode
+      # 5. 指向最新 Xcode
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 7. 设置环境变量
+      # 6. 设置环境变量
       - name: Setup environment
         run: |
           echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> $GITHUB_ENV
-          echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
           echo "CHOMA_SRC=$GITHUB_WORKSPACE/ChOma/src" >> $GITHUB_ENV
           echo "CHOMA_LIB=$GITHUB_WORKSPACE/ChOma/output/lib" >> $GITHUB_ENV
 
-      # 8. 修复 TrollStore 源码问题
-      - name: Fix source code issues
+      # 7. 修复和构建 fastPathSign
+      - name: Build fastPathSign
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign/src
           
-          # 修复文件名大小写问题
-          find . -type f -exec sed -i '' 's/#include "FAT.h"/#include "Fat.h"/g' {} \;
-          find . -type f -exec sed -i '' 's/FAT /Fat /g' {} \;
+          # 修复头文件问题
+          find . -name "*.h" -exec sed -i '' 's/#include "FAT.h"/#include "Fat.h"/g' {} \;
+          find . -name "*.m" -exec sed -i '' 's/#include "FAT.h"/#include "Fat.h"/g' {} \;
+          find . -name "*.c" -exec sed -i '' 's/#include "FAT.h"/#include "Fat.h"/g' {} \;
           
-          # 修复 API 不兼容问题
-          sed -i '' 's/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize, memory_stream_get_size(macho->stream))/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize)/g' coretrust_bug.c
-          
-          # 完全移除 csd_code_directory_update 调用
-          sed -i '' '/csd_code_directory_update/d' coretrust_bug.c
-          
-          # 修复头文件包含问题
-          sed -i '' '1s/^/#ifndef CORETRUST_BUG_H\n#define CORETRUST_BUG_H\n\n#include "CSBlob.h"\n#include "MachO.h"\n/' coretrust_bug.h
-          echo -e "\n#endif // CORETRUST_BUG_H" >> coretrust_bug.h
-
-      # 9. 构建 fastPathSign (关键修复)
-      - name: Build fastPathSign
-        run: |
-          cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
-          
-          # 清理之前的构建产物
-          rm -f fastPathSign
-          
-          # 构建命令（移除所有注释和中文）
+          # 构建 fastPathSign
+          cd ..
           clang -framework Foundation -framework CoreServices -framework Security \
                 -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
@@ -103,28 +76,37 @@ jobs:
                 -o fastPathSign \
                 src/codesign.m src/main.m src/coretrust_bug.c \
                 -L${{ env.CHOMA_LIB }} -lchoma \
-                -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto \
-                -ObjC
-          
-          # 验证生成的二进制文件
-          if [ -f "fastPathSign" ]; then
-            echo "✅ fastPathSign 构建成功"
-            file fastPathSign
-            lipo -info fastPathSign || echo "lipo 检查失败但二进制文件存在"
-          else
-            echo "❌ fastPathSign 构建失败"
-            exit 1
-          fi
+                -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
 
-      # 10. 构建主项目
-      - name: Build main project
+      # 8. 验证 Theos 环境并构建主项目
+      - name: Verify and build main project
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper
-          export THEOS=$GITHUB_WORKSPACE/theos
+          
+          # 验证 Theos 环境
+          echo "THEOS path: $THEOS"
+          if [ ! -d "$THEOS/makefiles" ]; then
+            echo "❌ Theos makefiles directory missing!"
+            exit 1
+          fi
+          
+          # 检查 Makefile
+          if [ ! -f "Makefile" ]; then
+            echo "❌ Makefile not found!"
+            exit 1
+          fi
+          
+          # 修改压缩格式（常见问题）
+          if [ -f "$THEOS/makefiles/package/deb.mk" ]; then
+            sed -i '' 's/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= lzma/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= gzip/g' $THEOS/makefiles/package/deb.mk
+            echo "✅ Compression format changed to gzip"
+          fi
+          
+          # 构建项目
           make clean
           make package
 
-      # 11. 上传产物
+      # 9. 上传产物
       - name: Upload helper
         uses: actions/upload-artifact@v4
         with:
