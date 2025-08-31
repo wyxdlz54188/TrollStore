@@ -2,14 +2,15 @@ name: Build TrollStore on Changes
 
 on:
   push:
+    branches: [main, master]
     paths:
-      - '**.swift'
-      - '**.m'
-      - '**.h'
-      - '**/Makefile'
-      - '**/*.xcodeproj/**'
-      - '**/*.xcworkspace/**'
-  workflow_dispatch: # 仍然允许手动触发
+      - 'Exploits/**'
+      - 'TrollStore/**'
+      - 'TrollHelper/**'
+      - 'RootHelper/**'
+      - 'Makefile'
+      - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -31,8 +32,6 @@ jobs:
           # 设置默认的 Xcode 路径
           if [ -d "/Applications/Xcode.app" ]; then
             sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_15.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.app/Contents/Developer
           else
             # 尝试查找任何 Xcode 版本
             XCODE_PATH=$(find /Applications -name "Xcode*.app" -maxdepth 1 | head -1)
@@ -61,7 +60,11 @@ jobs:
           fi
           
           # 安装必要工具
-          brew install ldid dpkg
+          brew install ldid dpkg pkg-config openssl@3
+          
+          # 设置 openssl 路径
+          echo 'export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3/lib/pkgconfig"' >> ~/.zprofile
+          eval "$(/opt/homebrew/bin/brew shellenv)"
           
           # 安装 pwnify
           if [ -d "Pwnify" ]; then
@@ -71,27 +74,57 @@ jobs:
             cd ..
           fi
 
+      - name: Build fastPathSign
+        run: |
+          echo "构建 fastPathSign..."
+          cd Exploits/fastPathSign
+          make
+          ls -la
+          # 将构建产物复制到上级目录，以便后续步骤使用
+          cp fastPathSign ../../
+          cd ../..
+
+      - name: Build RootHelper
+        run: |
+          echo "构建 RootHelper..."
+          cd RootHelper
+          make DEBUG=0
+          ls -la
+          cd ..
+
       - name: Build TrollStore
         run: |
-          make all
-          
+          echo "构建 TrollStore..."
+          cd TrollStore
+          make FINALPACKAGE=1
+          ls -la
+          cd ..
+
+      - name: Build TrollHelper
+        run: |
+          echo "构建 TrollHelper..."
+          cd TrollHelper
+          make FINALPACKAGE=1
+          ls -la
+          cd ..
+
       - name: List all build artifacts
         run: |
-          echo "构建完成，_build 目录内容如下:"
+          echo "构建完成，检查输出文件:"
           echo "=========================================="
-          find ./_build -type f -o -type d | sort
+          find . -name "*.ipa" -o -name "*.app" -o -name "*.deb" -o -name "*.tar" -o -name "fastPathSign" | head -20
           echo ""
           echo "文件详情:"
           echo "=========================================="
-          find ./_build -type f -exec ls -la {} \;
-          echo ""
-          echo "文件大小统计:"
-          echo "=========================================="
-          find ./_build -type f -exec du -h {} \; | sort -hr
+          find . -name "*.ipa" -o -name "*.app" -o -name "*.deb" -o -name "*.tar" -o -name "fastPathSign" -exec ls -la {} \; 2>/dev/null || true
 
-      - name: Upload all build artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: TrollStore-Complete-Build
-          path: ./_build/
-          if-no-files-found: error
+          name: TrollStore-Build-Output
+          path: |
+            *.ipa
+            *.deb
+            *.tar
+            fastPathSign
+          if-no-files-found: warn
