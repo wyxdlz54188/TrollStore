@@ -33,7 +33,7 @@ jobs:
           ln -s $(which make) $GITHUB_WORKSPACE/theos/bin/make
           
           # 验证 make 文件是否存在
-          if [ -f "$GITHUB_WORKSPACE/theos/bin/make" ]; then
+          if [极 " $GITHUB_WORKSPACE/theos/bin/make" ]; then
             echo "✅ Theos make 文件已创建"
           else
             echo "❌ 创建 Theos make 文件失败"
@@ -43,7 +43,7 @@ jobs:
       - name: Clone SDK
         run: |
           rm -rf $GITHUB_WORKSPACE/theos/sdks
-          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
+          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/s极ks
       # 5. 克隆 ChOma 仓库
       - name: Clone ChOma
         run: |
@@ -93,14 +93,14 @@ jobs:
           # 创建编译所有源文件的命令
           echo "=== 编译所有必要的源文件 ==="
           
-          # 编译 ChOma 源文件
-          find $GITHUB_WORKSPACE/ChOma/src -name "*.c" -o -name "*.m" | while read file; do
+          # 编译 ChOma 源文件 - 排除 coretrust_bug.c
+          find $GITHUB_WORKSPACE/ChOma/src -name "*.c" -o -name "*.m" | grep -v "coretrust_bug.c" | while read file; do
             echo "编译 $file"
             clang -c -fobjc-arc \
                   -I${{ env.OPENSSL_PREFIX }}/include \
-                  -I${{ env.CHOMA_SRC }} \
+                 极 -I${{ env.CHOMA_SRC }} \
                   -Isrc \
-                  -o "${file##*/}.o" \
+                  -o "choma_${file##*/}.o" \
                   "$file" || echo "❌ 编译失败: $file"
           done
           
@@ -120,14 +120,6 @@ jobs:
                 -I${{ env.CHOMA_SRC }} \
                 -Isrc \
                 -o coretrust_bug.o src/coretrust_bug.c || echo "❌ 编译失败: src/coretrust_bug.c"
-          
-          # 确保包含 update_load_commands_for_coretrust_bypass 函数的文件被编译
-          echo "=== 确保关键函数被编译 ==="
-          clang -c -fobjc-arc \
-                -I${{ env.OPENSSL_PREFIX }}/include \
-                -I${{ env.CHOMA_SRC }} \
-                -Isrc \
-                -o MachOLoadCommand.o $GITHUB_WORKSPACE/ChOma/src/MachOLoadCommand.c
           
           # 列出所有对象文件
           echo "=== 所有对象文件 ==="
