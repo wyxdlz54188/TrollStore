@@ -49,12 +49,12 @@ jobs:
           # 进入项目目录
           cd $GITHUB_WORKSPACE/Trollhelper
           
-          # 修复 fastPathSign 构建
+          # 进入 fastPathSign 目录
           cd Exploits/fastPathSign
           
-          # 下载缺失的头文件
-          curl -O https://raw.githubusercontent.com/opa334/ChOma/main/src/FAT.h
-          curl -O https://raw.githubusercontent.com/opa334/ChOma/main/src/CSBlob.h
+          # 下载缺失的头文件到 src 目录
+          curl -o src/FAT.h https://raw.githubusercontent.com/opa334/ChOma/main/src/FAT.h
+          curl -o src/CSBlob.h https://raw.githubusercontent.com/opa334/ChOma/main/src/CSBlob.h
           
           # 构建 fastPathSign
           clang -framework Foundation -framework CoreServices -framework Security \
@@ -65,7 +65,7 @@ jobs:
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
           
           # 返回项目根目录
-          cd ../..
+          cd $GITHUB_WORKSPACE/Trollhelper
           
           # 构建主项目
           make clean
