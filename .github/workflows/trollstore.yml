@@ -37,6 +37,9 @@ jobs:
       - name: Clone ChOma
         run: |
           git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
+          # 构建 ChOma 使其生成头文件
+          cd $GITHUB_WORKSPACE/ChOma
+          make
 
       # 6. 指向最新 Xcode
       - name: Select Xcode
@@ -55,19 +58,29 @@ jobs:
           # 进入项目目录
           cd $GITHUB_WORKSPACE/Trollhelper
           
-          # 复制 ChOma 头文件到 fastPathSign/src
-          cp $CHOMA_SRC/FAT.h Exploits/fastPathSign/src/
-          cp $CHOMA_SRC/MachO.h Exploits/fastPathSign/src/
-          cp $CHOMA_SRC/CSBlob.h Exploits/fastPathSign/src/
+          # 确保所有依赖头文件存在
+          echo "ChOma header files:"
+          ls -la $CHOMA_SRC/FAT.h $CHOMA_SRC/MachO.h $CHOMA_SRC/CSBlob.h
+          
+          # 复制全部必要文件到 fastPathSign 目录
+          mkdir -p Exploits/fastPathSign/src
+          cp -v $CHOMA_SRC/*.h Exploits/fastPathSign/src/
+          cp -v Exploits/fastPathSign.codesign.m Exploits/fastPathSign/src/codesign.m
+          cp -v Exploits/fastPathSign.main.m Exploits/fastPathSign/src/main.m
+          cp -v Exploits/coretrust_bug.c Exploits/fastPathSign/src/
           
           # 进入 fastPathSign 目录
           cd Exploits/fastPathSign
+          
+          # 显示复制的文件
+          ls -lA src/
           
           # 构建 fastPathSign
           clang -framework Foundation -framework CoreServices -framework Security \
                 -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
                 -I$CHOMA_SRC \
+                -Isrc \
                 -o fastPathSign \
                 src/codesign.m src/main.m src/coretrust_bug.c \
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
@@ -75,7 +88,11 @@ jobs:
           # 返回项目根目录
           cd $GITHUB_WORKSPACE/Trollhelper
           
+          # 确保可执行文件存在
+          ls -l Exploits/fastPathSign/fastPathSign
+          
           # 构建主项目
+          export THEOS=$GITHUB_WORKSPACE/theos
           make clean
           make package
 
