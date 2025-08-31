@@ -35,13 +35,16 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # 6. 构建（THEOS 用绝对路径）
+      # 6. 构建
       - name: Build
         env:
           THEOS: ${{ github.workspace }}/theos
         run: |
+          cd Trollhelper
           make clean
           make package
+          cd ..
+          cd Trollstore
 
       # 7. 上传产物
       - name: Upload IPA
