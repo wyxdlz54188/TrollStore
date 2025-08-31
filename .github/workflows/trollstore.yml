@@ -57,19 +57,17 @@ jobs:
           make clean
           make DISABLE_TESTS=1 ARCHS="arm64 arm64e"
           
-          # 验证库文件是否存在且包含所需符号
+          # 验证库文件是否存在
           if [ -f "output/lib/libchoma.a" ]; then
-            echo "✅ libchoma.a 存在，检查符号..."
+            echo "✅ libchoma.a 存在，检查架构和符号..."
             
-            # 检查 arm64 架构的符号
-            echo "=== arm64 架构符号 ==="
-            lipo output/lib/libchoma.a -thin arm64 -output libchoma_arm64.a
-            nm libchoma_arm64.a | grep "T _" | grep -E "(csd_|fat_|macho_)" | head -20 || echo "⚠️  未找到预期符号"
+            # 检查支持的架构
+            echo "=== libchoma.a 支持的架构 ==="
+            lipo -info output/lib/libchoma.a || echo "lipo 检查失败"
             
-            # 检查 arm64e 架构的符号
-            echo "=== arm64e 架构符号 ==="
-            lipo output/lib/libchoma.a -thin arm64e -output libchoma_arm64e.a
-            nm libchoma_arm64e.a | grep "T _" | grep -E "(csd_|fat_|macho_)" | head -20 || echo "⚠️  未找到预期符号"
+            # 检查符号
+            echo "=== 符号检查 ==="
+            nm output/lib/libchoma.a | grep "T _" | grep -E "(csd_|fat_|macho_)" | head -20 || echo "⚠️  未找到预期符号"
           else
             echo "❌ libchoma.a 不存在，检查构建输出"
             find . -name "*.a" -o -name "*.dylib" | head -5
