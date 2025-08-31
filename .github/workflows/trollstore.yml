@@ -1,7 +1,15 @@
-name: Build TrollStore and List Artifacts
+name: Build TrollStore on Changes
 
 on:
-  workflow_dispatch: # 只允许手动触发
+  push:
+    paths:
+      - '**.swift'
+      - '**.m'
+      - '**.h'
+      - '**/Makefile'
+      - '**/*.xcodeproj/**'
+      - '**/*.xcworkspace/**'
+  workflow_dispatch: # 仍然允许手动触发
 
 jobs:
   build:
@@ -14,19 +22,43 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup Xcode (替代方案)
+      - name: Find and setup Xcode
         run: |
-          # 手动选择 Xcode 版本
-          sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+          # 查找可用的 Xcode 版本
+          echo "可用的 Xcode 版本:"
+          ls /Applications | grep -i xcode || true
+          
+          # 设置默认的 Xcode 路径
+          if [ -d "/Applications/Xcode.app" ]; then
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_15.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.app/Contents/Developer
+          else
+            # 尝试查找任何 Xcode 版本
+            XCODE_PATH=$(find /Applications -name "Xcode*.app" -maxdepth 1 | head -1)
+            if [ -n "$XCODE_PATH" ]; then
+              sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+            else
+              echo "错误: 未找到 Xcode"
+              exit 1
+            fi
+          fi
+          
           # 接受 Xcode 许可协议
           sudo xcodebuild -license accept
+          
+          # 显示当前 Xcode 版本
+          echo "当前 Xcode 版本:"
+          xcodebuild -version
 
       - name: Install dependencies
         run: |
           # 安装 Homebrew (如果尚未安装)
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-          eval "$(/opt/homebrew/bin/brew shellenv)"
+          if ! command -v brew &> /dev/null; then
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+          fi
           
           # 安装必要工具
           brew install ldid dpkg
@@ -58,7 +90,7 @@ jobs:
           find ./_build -type f -exec du -h {} \; | sort -hr
 
       - name: Upload all build artifacts
-        uses: actions/upload-artifact@v4 # 使用 v4 替代已弃用的 v3
+        uses: actions/upload-artifact@v4
         with:
           name: TrollStore-Complete-Build
           path: ./_build/
