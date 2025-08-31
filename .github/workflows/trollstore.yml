@@ -53,6 +53,7 @@ jobs:
           echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> $GITHUB_ENV
           echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
           echo "CHOMA_SRC=$GITHUB_WORKSPACE/ChOma/src" >> $GITHUB_ENV
+          echo "CHOMA_LIB=$GITHUB_WORKSPACE/ChOma/output/lib" >> $GITHUB_ENV # 新增 ChOma 库路径
 
       # 8. 修复 TrollStore 源码问题
       - name: Fix source code issues
@@ -69,19 +70,35 @@ jobs:
           # 3. 完全移除 csd_code_directory_update 调用
           sed -i '' '/csd_code_directory_update/d' coretrust_bug.c
           
-          # 4. 修复头文件包含问题 - 这是关键修复
-          # 在 coretrust_bug.h 中添加必要的头文件包含
+          # 4. 修复头文件包含问题
           sed -i '' '1s/^/#ifndef CORETRUST_BUG_H\n#define CORETRUST_BUG_H\n\n#include "CSBlob.h"\n#include "MachO.h"\n/' coretrust_bug.h
           echo -e "\n#endif // CORETRUST_BUG_H" >> coretrust_bug.h
           
           # 5. 在 main.m 中添加必要的头文件包含
           sed -i '' $'s/#include "coretrust_bug.h"/#include "coretrust_bug.h"\\\n#include "MachO.h"\\\n#include "Fat.h"\\\n/g' main.m
 
-      # 9. 构建 fastPathSign
+      # 9. 验证 ChOma 库并修复链接问题
+      - name: Verify and fix linking
+        run: |
+          # 验证 ChOma 库是否包含所需符号
+          echo "验证 ChOma 库中的符号..."
+          nm $GITHUB_WORKSPACE/ChOma/output/lib/libchoma.a | grep "T _" | head -20 || echo "nm 命令可能没有找到期望的符号，这可能是架构问题"
+          
+          # 检查库支持的架构
+          lipo -info $GITHUB_WORKSPACE/ChOma/output/lib/libchoma.a || echo "lipo 检查失败，可能不是多架构库"
+          
+          # 确保库文件存在
+          ls -la $GITHUB_WORKSPACE/ChOma/output/lib/ || echo "ChOma 库目录不存在"
+          
+          # 如果 libchoma.a 不存在，尝试查找其他可能的库文件
+          find $GITHUB_WORKSPACE/ChOma -name "*.a" -o -name "*.dylib" | head -5 || echo "没有找到任何库文件"
+
+      # 10. 构建 fastPathSign (修复链接选项)
       - name: Build fastPathSign
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
-          ls -lA src/
+          
+          # 构建 fastPathSign，确保正确链接 ChOma 库
           clang -framework Foundation -framework CoreServices -framework Security \
                 -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
@@ -89,9 +106,15 @@ jobs:
                 -Isrc \
                 -o fastPathSign \
                 src/codesign.m src/main.m src/coretrust_bug.c \
-                -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
+                -L${{ env.CHOMA_LIB }} -lchoma \ # 链接 ChOma 库
+                -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto \
+                -ObjC # 添加 Objective-C 链接标志以确保所有类别被加载[9,10](@ref)
+          
+          # 验证生成的二进制文件
+          file fastPathSign || echo "file 命令失败"
+          lipo -info fastPathSign || echo "lipo 检查失败"
 
-      # 10. 构建主项目
+      # 11. 构建主项目
       - name: Build main project
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper
@@ -99,7 +122,7 @@ jobs:
           make clean
           make package
 
-      # 11. 上传产物
+      # 12. 上传产物
       - name: Upload helper
         uses: actions/upload-artifact@v4
         with:
