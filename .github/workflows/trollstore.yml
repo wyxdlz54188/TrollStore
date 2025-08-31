@@ -54,133 +54,29 @@ jobs:
           echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
           echo "CHOMA_SRC=$GITHUB_WORKSPACE/ChOma/src" >> $GITHUB_ENV
 
-      # 8. 修复构建步骤
-      - name: Build
+      # 8. 构建 fastPathSign
+      - name: Build fastPathSign
         run: |
-          # 进入项目目录
-          cd $GITHUB_WORKSPACE/Trollhelper
-          
-          # 进入 fastPathSign 目录
-          cd Exploits/fastPathSign
-          
-          # 显示文件列表，用于调试
+          cd $GITHUB_WORKSPACE/Trollhelper/Exploits/fastPathSign
           ls -lA src/
-          
-          # 构建 fastPathSign
           clang -framework Foundation -framework CoreServices -framework Security \
                 -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
-                -I$CHOMA_SRC \
+                -I${{ env.CHOMA_SRC }} \
                 -Isrc \
                 -o fastPathSign \
                 src/codesign.m src/main.m src/coretrust_bug.c \
                 -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
-          
-          # 返回项目根目录
+
+      # 9. 构建主项目
+      - name: Build main project
+        run: |
           cd $GITHUB_WORKSPACE/Trollhelper
-          
-          # 构建主项目
           export THEOS=$GITHUB_WORKSPACE/theos
           make clean
           make package
 
-      # 9. 上传产物
-      - name: Upload helper
-        uses: actions/upload-artifact@v4
-        with:
-          name: TrollStore
-          path: Trollhelper/packages/*
-name: Build TrollStore helper
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: macos-latest
-
-    steps:
-      # 1. 拉取当前仓库
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          path: Trollhelper
-
-      # 2. 安装依赖
-      - name: Install dependencies
-        run: |
-          brew update
-          brew install ldid xz openssl@3
-
-      # 3. 克隆 Theos
-      - name: Clone Theos
-        run: |
-          git clone --recursive https://github.com/theos/theos.git $GITHUB_WORKSPACE/theos
-
-      # 4. 克隆 SDK
-      - name: Clone SDK
-        run: |
-          rm -rf $GITHUB_WORKSPACE/theos/sdks
-          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
-
-      # 5. 克隆 ChOma 仓库
-      - name: Clone ChOma
-        run: |
-          git clone https://github.com/opa334/ChOma.git $GITHUB_WORKSPACE/ChOma
-          # 修复测试工具构建问题
-          sed -i '' 's/csd_code_directory_update/csd_code_directory_init/g' $GITHUB_WORKSPACE/ChOma/tests/choma_sign/main.c
-          # 仅构建库，跳过测试
-          cd $GITHUB_WORKSPACE/ChOma
-          make DISABLE_TESTS=1
-
-      # 6. 指向最新 Xcode
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      # 7. 设置环境变量
-      - name: Setup environment
-        run: |
-          echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> $GITHUB_ENV
-          echo "THEOS=$GITHUB_WORKSPACE/theos" >> $GITHUB_ENV
-          echo "CHOMA_SRC=$GITHUB_WORKSPACE/ChOma/src" >> $GITHUB_ENV
-
-      # 8. 修复构建步骤
-      - name: Build
-        run: |
-          # 进入项目目录
-          cd $GITHUB_WORKSPACE/Trollhelper
-          
-          # 复制全部必要文件到 fastPathSign 目录
-          mkdir -p Exploits/fastPathSign/src
-          cp -v $CHOMA_SRC/*.h Exploits/fastPathSign/src/
-          cp -v Exploits/fastPathSign.codesign.m Exploits/fastPathSign/src/codesign.m
-          cp -v Exploits/fastPathSign.main.m Exploits/fastPathSign/src/main.m
-          cp -v Exploits/coretrust_bug.c Exploits/fastPathSign/src/
-          
-          # 进入 fastPathSign 目录
-          cd Exploits/fastPathSign
-          
-          # 构建 fastPathSign
-          clang -framework Foundation -framework CoreServices -framework Security \
-                -fobjc-arc \
-                -I${{ env.OPENSSL_PREFIX }}/include \
-                -I$CHOMA_SRC \
-                -Isrc \
-                -o fastPathSign \
-                src/codesign.m src/main.m src/coretrust_bug.c \
-                -L${{ env.OPENSSL_PREFIX }}/lib -lcrypto
-          
-          # 返回项目根目录
-          cd $GITHUB_WORKSPACE/Trollhelper
-          
-          # 构建主项目
-          export THEOS=$GITHUB_WORKSPACE/theos
-          make clean
-          make package
-
-      # 9. 上传产物
+      # 10. 上传产物
       - name: Upload helper
         uses: actions/upload-artifact@v4
         with:
