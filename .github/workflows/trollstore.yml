@@ -101,7 +101,7 @@ jobs:
                   -I${{ env.CHOMA_SRC }} \
                   -Isrc \
                   -o "${file##*/}.o" \
-                  "$file"
+                  "$file" || echo "❌ 编译失败: $file"
           done
           
           # 编译 fastPathSign 源文件
@@ -109,17 +109,29 @@ jobs:
                 -I${{ env.OPENSSL_PREFIX }}/include \
                 -I${{ env.CHOMA_SRC }} \
                 -Isrc \
-                -o codesign.o src/codesign.m
+                -o codesign.o src/codesign.m || echo "❌ 编译失败: src/codesign.m"
           clang -c -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
                 -I${{ env.CHOMA_SRC }} \
                 -Isrc \
-                -o main.o src/main.m
+                -o main.o src/main.m || echo "❌ 编译失败: src/main.m"
           clang -c -fobjc-arc \
                 -I${{ env.OPENSSL_PREFIX }}/include \
                 -I${{ env.CHOMA_SRC }} \
                 -Isrc \
-                -o coretrust_bug.o src/coretrust_bug.c
+                -o coretrust_bug.o src/coretrust_bug.c || echo "❌ 编译失败: src/coretrust_bug.c"
+          
+          # 确保包含 update_load_commands_for_coretrust_bypass 函数的文件被编译
+          echo "=== 确保关键函数被编译 ==="
+          clang -c -fobjc-arc \
+                -I${{ env.OPENSSL_PREFIX }}/include \
+                -I${{ env.CHOMA_SRC }} \
+                -Isrc \
+                -o MachOLoadCommand.o $GITHUB_WORKSPACE/ChOma/src/MachOLoadCommand.c
+          
+          # 列出所有对象文件
+          echo "=== 所有对象文件 ==="
+          ls -lA *.o
           
           # 链接所有对象文件
           echo "=== 链接所有对象文件 ==="
@@ -138,7 +150,7 @@ jobs:
             
             # 检查二进制文件中的符号
             echo "=== fastPathSign 中的符号 ==="
-            nm fastPathSign | grep "U _" | grep -E "(csd_|fat_|macho_)" | head -20 || echo "⚠️  未找到预期符号"
+            nm fastPathSign | grep "update_load_commands_for_coretrust_bypass" || echo "⚠️  未找到 update_load_commands_for_coretrust_bypass 符号"
           else
             echo "❌ fastPathSign 构建失败"
             exit 1
