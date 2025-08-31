@@ -14,14 +14,23 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup Xcode
-        uses: actions/setup-xcode@v1
-        with:
-          xcode-version: '15.0'
+      - name: Setup Xcode (替代方案)
+        run: |
+          # 手动选择 Xcode 版本
+          sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+          # 接受 Xcode 许可协议
+          sudo xcodebuild -license accept
 
       - name: Install dependencies
         run: |
+          # 安装 Homebrew (如果尚未安装)
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+          eval "$(/opt/homebrew/bin/brew shellenv)"
+          
+          # 安装必要工具
           brew install ldid dpkg
+          
           # 安装 pwnify
           if [ -d "Pwnify" ]; then
             cd Pwnify
@@ -49,7 +58,7 @@ jobs:
           find ./_build -type f -exec du -h {} \; | sort -hr
 
       - name: Upload all build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # 使用 v4 替代已弃用的 v3
         with:
           name: TrollStore-Complete-Build
           path: ./_build/
