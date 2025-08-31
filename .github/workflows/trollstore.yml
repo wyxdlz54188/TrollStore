@@ -21,7 +21,7 @@ jobs:
         run: |
           brew update
           brew install ldid xz openssl@3 make
-      # 3. 克隆 Theos 并设置 make
+      # 3. 克隆 Theos 并设置 make (关键修复)
       - name: Clone and setup Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git $GITHUB_WORKSPACE/theos
@@ -29,21 +29,39 @@ jobs:
           # 确保 bin 目录存在
           mkdir -p $GITHUB_WORKSPACE/theos/bin
           
+          # 查找 make 的完整路径
+          MAKE_PATH=$(which make)
+          if [ -z "$MAKE_PATH" ]; then
+            echo "❌ 找不到 make 命令"
+            exit 1
+          fi
+          
+          echo "make 路径: $MAKE_PATH"
+          
           # 创建 make 符号链接
-          ln -s $(which make) $GITHUB_WORKSPACE/theos/bin/make
+          ln -s $MAKE_PATH $GITHUB_WORKSPACE/theos/bin/make
           
           # 验证 make 文件是否存在
-          if [极 " $GITHUB_WORKSPACE/theos/bin/make" ]; then
+          if [ -f "$GITHUB_WORKSPACE/theos/bin/make" ]; then
             echo "✅ Theos make 文件已创建"
           else
             echo "❌ 创建 Theos make 文件失败"
-            exit 1
+            echo "尝试直接复制 make"
+            cp $MAKE_PATH $GITHUB_WORKSPACE/theos/bin/make || echo "复制失败"
+            
+            # 再次验证
+            if [ -f "$GITHUB_WORKSPACE/theos/bin/make" ]; then
+              echo "✅ 通过复制创建成功"
+            else
+              echo "❌ 创建 Theos make 文件失败"
+              exit 1
+            fi
           fi
       # 4. 克隆 SDK
       - name: Clone SDK
         run: |
           rm -rf $GITHUB_WORKSPACE/theos/sdks
-          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/s极ks
+          git clone --depth=1 https://github.com/theos/sdks.git $GITHUB_WORKSPACE/theos/sdks
       # 5. 克隆 ChOma 仓库
       - name: Clone ChOma
         run: |
@@ -71,7 +89,7 @@ jobs:
           sed -i '' 's/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize, memory_stream_get_size(macho->stream))/update_load_commands_for_coretrust_bypass(macho, encodedSuperblobUnsigned, originalCodeSignatureSize)/g' coretrust_bug.c
           
           # 完全移除 csd_code_directory_update 调用
-          sed -i '' '/csd_code_directory_update/d' coretrust_bug.c
+          sed -i '' '/cs极d_code_directory_update/d' coretrust_bug.c
           
           # 修复头文件包含问题
           sed -i '' '1s/^/#ifndef CORETRUST_BUG_H\n#define CORETRUST_BUG_H\n\n#include "CSBlob.h"\n#include "MachO.h"\n/' coretrust_bug.h
@@ -98,7 +116,7 @@ jobs:
             echo "编译 $file"
             clang -c -fobjc-arc \
                   -I${{ env.OPENSSL_PREFIX }}/include \
-                 极 -I${{ env.CHOMA_SRC }} \
+                  -I${{ env.CHOMA_SRC }} \
                   -Isrc \
                   -o "choma_${file##*/}.o" \
                   "$file" || echo "❌ 编译失败: $file"
