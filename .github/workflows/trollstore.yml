@@ -146,13 +146,17 @@ jobs:
         run: |
           echo "构建 RootHelper..."
           cd RootHelper
-          # 设置 Theos 环境变量
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
           
           # 修复 API 不可用错误
-          echo "应用 API 可用性修复..."
-          export TARGET_CFLAGS="-D_XPC_CONNECTION_CREATE_MACH_SERVICE_AVAILABLE=1"
+          echo "修改源代码使用可用的 API..."
+          if grep -q "xpc_connection_create_mach_service" devmode.m; then
+            # 双重修复：替换调用并添加宏定义
+            sed -i '' 's/xpc_connection_create_mach_service/xpc_connection_create/g' devmode.m
+            sed -i '' '1i #define xpc_connection_create_mach_service xpc_connection_create' devmode.m
+            echo "已修复 RootHelper 中的 API 问题"
+          fi
           
           # 使用并行构建
           make DEBUG=0
@@ -164,13 +168,16 @@ jobs:
         run: |
           echo "构建 TrollStore..."
           cd TrollStore
-          # 设置 Theos 环境变量
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
           
-          # 修复 API 不可用错误
-          echo "应用 API 可用性修复..."
-          export TARGET_CFLAGS="-D_XPC_CONNECTION_CREATE_MACH_SERVICE_AVAILABLE=1"
+          # 修复可能存在的相同问题
+          echo "检查并修复 TrollStore 中的 API 问题..."
+          find . -name "*.m" -exec grep -l "xpc_connection_create_mach_service" {} + | while read file; do
+            sed -i '' 's/xpc_connection_create_mach_service/xpc_connection_create/g' "$file"
+            sed -i '' '1i #define xpc_connection_create_mach_service xpc_connection_create' "$file"
+            echo "已修复 $file 中的 API 问题"
+          done
           
           # 使用并行构建
           make FINALPACKAGE=1
@@ -182,13 +189,16 @@ jobs:
         run: |
           echo "构建 TrollHelper..."
           cd TrollHelper
-          # 设置 Theos 环境变量
           export THEOS=~/theos
           export PATH=$THEOS/bin:$PATH
           
-          # 修复 API 不可用错误
-          echo "应用 API 可用性修复..."
-          export TARGET_CFLAGS="-D_XPC_CONNECTION_CREATE_MACH_SERVICE_AVAILABLE=1"
+          # 修复可能存在的相同问题
+          echo "检查并修复 TrollHelper 中的 API 问题..."
+          find . -name "*.m" -exec grep -l "xpc_connection_create_mach_service" {} + | while read file; do
+            sed -i '' 's/xpc_connection_create_mach_service/xpc_connection_create/g' "$file"
+            sed -i '' '1i #define xpc_connection_create_mach_service xpc_connection_create' "$file"
+            echo "已修复 $file 中的 API 问题"
+          done
           
           # 使用并行构建
           make FINALPACKAGE=1
