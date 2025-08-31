@@ -113,9 +113,46 @@ jobs:
       - name: Build main project
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper
-          export THEOS=$GITHUB_WORKSPACE/theos
+          
+          # 验证 Theos 环境
+          echo "THEOS path: $THEOS"
+          if [ ! -d "$THEOS/makefiles" ]; then
+            echo "❌ Theos makefiles directory missing!"
+            exit 1
+          fi
+          
+          # 检查 Makefile
+          if [ ! -f "Makefile" ]; then
+            echo "❌ Makefile not found!"
+            exit 1
+          fi
+          
+          # 修改压缩格式（常见问题）
+          if [ -f "$THEOS/makefiles/package/deb.mk" ]; then
+            sed -i '' 's/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= lzma/_THEOS_PLATFORM_DPKG_DEB_COMPRESSION ?= gzip/g' $THEOS/makefiles/package/deb.mk
+            echo "✅ Compression format changed to gzip"
+          fi
+          
+          # 清理并构建
           make clean
-          make package
+          
+          # 尝试构建 package
+          make package || {
+            echo "⚠️ 直接 make package 失败，尝试诊断问题..."
+            
+            # 检查 Makefile 中是否有 package 目标
+            if ! grep -q "package:" Makefile; then
+              echo "❌ Makefile 中缺少 package 目标"
+              echo "=== Makefile 内容 ==="
+              cat Makefile
+              exit 1
+            fi
+            
+            # 尝试使用详细模式构建
+            echo "尝试使用详细模式构建..."
+            make package VERBOSE=1
+          }
+
       # 11. 上传产物
       - name: Upload helper
         uses: actions/upload-artifact@v4
