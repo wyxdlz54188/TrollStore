@@ -39,6 +39,12 @@ jobs:
       - name: Build
         run: |
           mkdir -p Trollhelper/Exploits/fastPathSign
+          cd Exploits/fastPathSign
+          make
+          ls
+          cd ..
+          cd ..
+          ls
           cp Exploits/fastPathSign/fastPathSign Trollhelper/Exploits/fastPathSign/fastPathSign
           cd Trollhelper
           make clean
