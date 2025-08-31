@@ -95,10 +95,8 @@ jobs:
           sed -i '' '1s/^/#ifndef CORETRUST_BUG_H\n#define CORETRUST_BUG_H\n\n#include "CSBlob.h"\n#include "MachO.h"\n/' coretrust_bug.h
           echo -e "\n#endif // CORETRUST_BUG_H" >> coretrust_bug.h
           
-          # 添加软链接确保编译器能找到头文件
-          ln -s $GITHUB_WORKSPACE/ChOma/src/CSBlob.h CSBlob.h
-          ln -s $GITHUB_WORKSPACE/ChOma/src/MachO.h MachO.h
-          ln -s $GITHUB_WORKSPACE/ChOma/src/Fat.h Fat.h
+          # 添加所有必要的头文件软链接
+          ln -s $GITHUB_WORKSPACE/ChOma/src/*.h .
           
           # 显示文件列表验证
           ls -lA
