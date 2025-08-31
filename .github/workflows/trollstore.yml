@@ -43,8 +43,6 @@ jobs:
           cd Trollhelper
           make clean
           make package
-          cd ..
-          cd Trollstore
 
       # 7. 上传产物
       - name: Upload IPA
