@@ -123,7 +123,7 @@ jobs:
             echo "❌ fastPathSign 构建失败"
             exit 1
           fi
-      # 10. 构建主项目
+      # 10. 构建主项目 - 关键修复
       - name: Build main project
         run: |
           cd $GITHUB_WORKSPACE/Trollhelper
@@ -138,14 +138,40 @@ jobs:
             echo "✅ Compression format changed to gzip"
           fi
           
-          # 清理并构建
-          make clean
-          $THEOS/bin/make package \
-            THEOS=$THEOS \
-            TARGET=iphone:clang:latest:12.0 \
-            ARCHS=arm64 \
-            DEBUG=0 \
-            FINALPACKAGE=1
+          # 诊断项目结构
+          echo "=== 项目目录结构 ==="
+          find . -maxdepth 2 -type d | sort
+          echo "=== Makefile 内容 ==="
+          cat Makefile || echo "没有找到 Makefile"
+          
+          # 检查是否有 package 目标
+          if grep -q "package:" Makefile; then
+            echo "✅ Makefile 包含 package 目标"
+            make clean
+            make package
+          else
+            echo "⚠️ Makefile 不包含 package 目标，使用替代方法"
+            
+            # 创建临时 Makefile
+            echo "创建临时 Makefile"
+            cat << EOF > Makefile.temp
+include \$(THEOS)/makefiles/common.mk
+
+export ARCHS = arm64
+export TARGET = iphone:clang:latest:12.0
+export DEBUG = 0
+export FINALPACKAGE = 1
+
+TWEAK_NAME = TrollHelper
+TrollHelper_FILES = Exploits/fastPathSign/fastPathSign
+
+include \$(THEOS_MAKE_PATH)/tweak.mk
+EOF
+            
+            # 使用临时 Makefile 构建
+            make -f Makefile.temp clean
+            make -f Makefile.temp package
+          fi
 
       # 11. 上传产物
       - name: Upload helper
